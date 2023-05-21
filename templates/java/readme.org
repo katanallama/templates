@@ -1,0 +1,53 @@
+* Java on Nix
+
+This is a minimal template for Java development with jdtls ~1.22.0~ and Emacs
+
+** Initialization
+
+To use a template, you can use the ~nix flake init~ command and specify the template with the ~--template~ flag
+#+begin_src sh
+nix flake init --template "github:katanallama/templates#java"
+#+end_src
+
+** Usage
+
+This template uses mvn2nix to create a lockfile for your Maven project, the flake is already setup to utilize ~mvn2nix-lock.json~
+#+begin_src sh
+nix run github:fzakaria/mvn2nix#mvn2nix > mvn2nix-lock.json
+#+end_src
+
+~nix develop~: drops you into a shell with the ~jdk17~, ~maven~, ~jdtls~, and your ~package~
+#+begin_src sh
+nix develop
+#+end_src
+
+*** Emacs
+
+A ~shellHook~ sets the  ~JAVA_HOME~ and ~JDTLS_PATH~ for the project.
+#+begin_src sh
+shellHook = ''
+    export JAVA_HOME=${legacyPackages.jdk17}/
+    export JDTLS_PATH=${legacyPackages.jdtls}/share/java/
+'';
+#+end_src
+
+In your config.el:
+#+begin_src elisp
+(after! lsp-java
+  ;; project specific JAVA_HOME in the nixstore
+  (setq lsp-java-java-path (getenv "JAVA_HOME"))
+  (defun lsp-java--ls-command ()
+    ;; jdtls provided by devShells requires a writable location for
+    ;; config and workspace files outside of nix store so we put
+    ;; them in the project root
+    (list "jdt-language-server"
+          "-configuration" "../config-linux"
+          "-data" "../java-workspace")))
+(after! cc-mode
+  ;; project specific jdtls as set by shellhook in devShells
+  (defun my-set-lsp-path ()
+    (setq lsp-java-server-install-dir (getenv "JDTLS_PATH")))
+  (add-hook 'java-mode-hook #'my-set-lsp-path))
+#+end_src
+
+Thanks to [[https://dschrempf.github.io/emacs/2023-03-02-emacs-java-and-nix/][Dominik]] for the nice blogpost on getting started with lsp-java on Emacs
