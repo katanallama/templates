@@ -23,6 +23,7 @@ in
     nativeBuildInputs = [jdk17 maven makeWrapper];
 
     installPhase = ''
+      cp ${pomXml} $out/pom.xml
       # create the bin directory
       mkdir -p $out/bin
 

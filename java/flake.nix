@@ -33,6 +33,7 @@
     };
 
     packages.${system} = {
+      pom = pomXml;
       ${pname} = pkgs.callPackage ./. {inherit pname version pomXml;};
       jdt-language-server = pkgs.callPackage ./jdt-language-server.nix {};
       default = self.packages.${system}.${pname};
