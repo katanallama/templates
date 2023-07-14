@@ -40,7 +40,7 @@
       };
 
       java = {
-        path = ./java;
+        path = ./templates/java;
         description = "Java dev environment";
       };
 
