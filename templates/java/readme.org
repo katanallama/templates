@@ -1,6 +1,6 @@
 * Java on Nix
 
-This is a minimal template for Java development with jdtls ~1.22.0~ and Emacs
+This is a minimal template for Java development with jdtls ~1.23.0~ and Emacs
 
 ** Initialization
 
@@ -11,35 +11,65 @@ nix flake init --template "github:katanallama/templates#java"
 
 ** Usage
 
-This template uses mvn2nix to create a lockfile for your Maven project, the flake is already setup to utilize ~mvn2nix-lock.json~
-#+begin_src sh
-nix run github:fzakaria/mvn2nix#mvn2nix > mvn2nix-lock.json
+In ~flake.nix~ set your project details, this will set these in ~pom.xml~ for you
+
+#+begin_src nix
+pname = "projectName";
+version = "0.1";
+groupId = "com";
+artifactId = pname;
+mainClass = "${groupId}.${pname}.Project";
 #+end_src
 
-~nix develop~: drops you into a shell with the ~jdk17~, ~maven~, ~jdtls~, and your ~package~
+~nix develop~ drops you into a shell with the ~jdk17~ and ~jdtls~
+
 #+begin_src sh
 nix develop
 #+end_src
 
-*** Emacs
+This will be needed if you plan on using this flake to manage your LSP, actually I suggest using direnv, an ~.envrc~ is included.
 
-A ~shellHook~ sets the  ~JAVA_HOME~ and ~JDTLS_PATH~ for the project.
-#+begin_src sh
-shellHook = ''
-    export JAVA_HOME=${legacyPackages.jdk17}/
-    export JDTLS_PATH=${legacyPackages.jdtls}/share/java/
-'';
+~nix build -L~ will build and run your project with the full maven test output on a test failure, clean otherwise.
+
+~nix run~ will well.. run the project.
+
+
+*** Adding new dependencies
+
+To update the dependencies, update ~pom.xml~ run ~nix build~ and set the [[./default.nix][mvnHash]] in ~./default.nix~ :
+
+~mvnHash = "";~ remove the old hash
+
+#+begin_src shell
+error: hash mismatch in fixed-output derivation '/nix/store/5qg53w81hk9gj9d7c9kcr7vcsclfy2hr-projectName-0.1-maven-deps.drv':
+         specified: sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+            got:    sha256-4RWhvMHAYI4QhLhXssCv+62XP5v4oxftFlJSXBjUK7g=
+error: 1 dependencies of derivation '/nix/store/ypzs42733k1wlmmfq908qpymgafzhsgh-projectName-0.1.drv' failed to build
 #+end_src
 
-In your config.el:
+Update the hash in `./default.nix`:
+
+~mvnHash = "sha256-4RWhvMHAYI4QhLhXssCv+62XP5v4oxftFlJSXBjUK7g=";~
+
+~nix build -L~
+
+*** Emacs
+
+~JAVA_HOME~ and ~JDTLS_PATH~ set for the project in flake.nix
+#+begin_src nix
+JAVA_HOME = pkgs.jdk17;
+JDTLS_PATH = "${self.packages.${system}.jdt-language-server}/share/java/";
+#+end_src
+
+In ~config.el~ we set the location of ~config-linux/~ and ~java-workspace/~ for jdtls to function. You can override this to put both directories where you'd like, so long as it's outside of the project root directory. I place them one ~dir~ level up as I use it on a per-project basis.
+
 #+begin_src elisp
 (after! lsp-java
   ;; project specific JAVA_HOME in the nixstore
   (setq lsp-java-java-path (getenv "JAVA_HOME"))
   (defun lsp-java--ls-command ()
     ;; jdtls provided by devShells requires a writable location for
-    ;; config and workspace files outside of nix store so we put
-    ;; them in the project root
+    ;; config and workspace files outside of nix store
     (list "jdt-language-server"
           "-configuration" "../config-linux"
           "-data" "../java-workspace")))
@@ -50,4 +80,16 @@ In your config.el:
   (add-hook 'java-mode-hook #'my-set-lsp-path))
 #+end_src
 
-Thanks to [[https://dschrempf.github.io/emacs/2023-03-02-emacs-java-and-nix/][Dominik]] for the nice blogpost on getting started with lsp-java on Emacs
+Thanks to [[https://dschrempf.github.io/emacs/2023-03-02-emacs-java-and-nix/][Dominik]] for the nice blog post on getting started with lsp-java on Emacs
+
+*** VSCodium
+
+This is also tested to work with VSCodium using the following extensions provided through ~home manager~ on NixOS.
+
+#+begin_src java
+redhat.java
+vscjava.vscode-java-test
+vscjava.vscode-java-dependency
+vscjava.vscode-java-debug
+vscjava.vscode-maven
+#+end_src

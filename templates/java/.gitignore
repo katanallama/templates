@@ -2,10 +2,6 @@
 .direnv
 result
 
-# Emacs, provides project specific jdtls settings when using devShells
-config-linux
-java-workspace
-
 ### Java ###
 # Compiled class file
 *.class
@@ -50,4 +46,5 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+.factorypath
 .settings
