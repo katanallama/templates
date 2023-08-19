@@ -1,17 +1,14 @@
 {
   description = "A collection of flake templates";
 
-  inputs = {
-    nix-vital.url = "github:nixvital/flake-templates";
-    ml-pkgs.url = "github:katanallama/ml-pkgs";
-  };
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs, nix-vital, ... }@inputs: {
+  outputs = { self, nixpkgs, ... }: {
     templates = {
 
-      stm32 = {
-        path = ./stm32;
-        description = "stm32 dev environment";
+      stm32-c = {
+        path = ./stm32-c;
+        description = "stm32 C dev environment";
       };
 
       java = {
@@ -19,6 +16,6 @@
         description = "Java dev environment";
       };
 
-    } // nix-vital.templates;
+    };
   };
 }
