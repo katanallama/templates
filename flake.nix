@@ -3,8 +3,12 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs, ... }: {
+  outputs = {...}: {
     templates = {
+      stm32-rs = {
+        path = ./stm32-rs;
+        description = "stm32 Rust dev environment";
+      };
 
       stm32-c = {
         path = ./stm32-c;
@@ -15,7 +19,6 @@
         path = ./java;
         description = "Java dev environment";
       };
-
     };
   };
 }
