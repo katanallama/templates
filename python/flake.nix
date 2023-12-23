@@ -29,27 +29,20 @@
             python3 = pkgs.python311;
             python3Packages = pkgs.python311Packages;
           };
-        customPkgs = customizePkgs pkgs;
 
-        commonArgs = {
-          pname = "python-template";
-          version = "v0.1.0";
-
-          nativeBuildInputs = with customPkgs; [];
-          buildInputs = [];
-        };
+        pythonPkgs = customizePkgs pkgs;
       in {
-        devShells.default = customPkgs.mkShell {
+        devShells.default = pythonPkgs.mkShell {
           name = "python";
-          inputsFrom = builtins.attrValues self.checks;
-          buildInputs = [customPkgs.ruff customPkgs.ruff-lsp];
+          buildInputs = with pythonPkgs; [
+            ruff
+            ruff-lsp
+          ];
         };
 
         packages = {
-          package = customPkgs.callPackage ./package.nix {};
+          default = pythonPkgs.callPackage ./package.nix {};
         };
-
-        formatter = customPkgs.alejandra;
       };
     });
 }
