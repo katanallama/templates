@@ -5,6 +5,11 @@
 
   outputs = {...}: {
     templates = {
+      python = {
+        path = ./python;
+        description = "Python dev environment";
+      };
+
       stm32-rs = {
         path = ./stm32-rs;
         description = "stm32 Rust dev environment";
