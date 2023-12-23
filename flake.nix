@@ -5,9 +5,19 @@
 
   outputs = {...}: {
     templates = {
+      java = {
+        path = ./java;
+        description = "Java dev environment";
+      };
+
       python = {
         path = ./python;
         description = "Python dev environment";
+      };
+
+      R = {
+        path = ./R;
+        description = "R dev environment";
       };
 
       stm32-rs = {
@@ -18,11 +28,6 @@
       stm32-c = {
         path = ./stm32-c;
         description = "stm32 C dev environment";
-      };
-
-      java = {
-        path = ./java;
-        description = "Java dev environment";
       };
     };
   };
