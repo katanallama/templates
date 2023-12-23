@@ -1,0 +1,267 @@
+* Rust on stm32
+
+This is a minimal template for Rust development on ~stm32~ microcontrollers with a focus on real time transfer applications.
+
+** Initialization
+
+To use a template, you can use the ~nix flake init~ command and specify the template with the ~--template~ flag
+
+#+begin_src sh
+nix flake init --template "github:katanallama/templates#stm32-rs"
+#+end_src
+
+
+*** System configuration
+
+Add the following somewhere in your equivalent to ~configuration.nix~ and reboot
+
+#+begin_src nix
+services.udev.packages = with pkgs; [
+  openocd
+  stlink
+];
+
+# if the above does not work, your user may need to be added
+# to the plugdev group on my system, this is not needed
+# user.extraGroups = ["plugdev"];
+#+end_src
+
+This will add the ~udev~ rules required to communicate with the ST-Link probe via ~openOCD~. See [[https://probe.rs/docs/getting-started/probe-setup/][probe setup]] from the ~probe-rs~ site. Rather than use their rules directly, we will pull the ~udev.packages~ for the ~openOCD~ service and the ST-Link itself directly from ~nixpkgs~. This will be fine for any ST-Link probe, but if your preference is to a J-Link or CMSIS-DAP setup, you'll have to add the corresponding packages from ~nixpkgs~ or elsewhere.
+
+
+*** flake.nix
+
+This is the core of the Nix setup. It defines the required packages and tools for the development environment, including the ~rust~ compiler, ~openOCD~, ~gdb~, and other necessary tools. It also provides shell scripts for building, flashing, and debugging the Rust project.
+
+#+begin_src nix
+{
+  description = "A Nix flake for building a rust project targeting stm32";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+  };
+
+  outputs = {
+    nixpkgs,
+    rust-overlay,
+    ...
+  }: let
+    system = "x86_64-linux";
+    pkgs = import nixpkgs {
+      inherit system;
+      overlays = [rust-overlay.overlays.default];
+    };
+    rustChannel = "nightly";
+    rustEnvironment = let
+      rust-bin-pkg = pkgs.rust-bin.${rustChannel}.latest;
+    in
+      with pkgs;
+        mkShell {
+          packages = [
+            ...
+          ];
+          ...
+        };
+
+    buildCommand = pkgs.writeShellScriptBin "build103" ''
+    ...
+    '';
+  in {
+    packages.${system} = {
+      default = rustEnvironment;
+      buildRustStm32 = buildCommand;
+      ...
+    };
+  };
+}
+#+end_src
+
+
+*** Cargo
+
+#+begin_src toml
+# .cargo/config.toml
+[build]
+target = "thumbv7m-none-eabi" # stm32f1
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = ["-C", "link-arg=-Tlink.x"]
+#+end_src
+
+~name="rust-stm32"~ defines the package name, this must also be changed in ~flake.nix~ as it sets the target path for flashing.
+
+#+begin_src toml
+# Cargo.toml
+[package]
+name = "rust-stm32"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cortex-m = { version = "0.7.6", features = ["critical-section-single-core"]}
+cortex-m-rt = "0.7.3"
+embedded-hal = "0.2.7"
+nb = "1.1.0"
+panic-rtt-target = { version = "0.1.2", features = ["cortex-m"] }
+rtt-target = "0.4.0"
+stm32f1 = { version = "0.15.1", features = ["stm32f103", "rt" ] }
+stm32f1xx-hal = "0.10.0"
+# cortex-m-semihosting = "0.5.0"
+
+[features]
+f103 = [ "stm32f1xx-hal/rt", "stm32f1xx-hal/medium",  "stm32f1xx-hal/stm32f103" ]
+default = ["f103"]
+#+end_src
+
+~cortex-m~: Provides low-level access to ARM Cortex-M processors. This includes functions to interact with system registers and other processor-specific features.
+
+~cortex-m-rt~: This is the runtime for ARM Cortex-M processors. It provides startup code and other runtime functionalities necessary for these processors.
+
+~embedded-hal~~: This is a Hardware Abstraction Layer (HAL) for embedded systems in Rust. It defines traits (interfaces) that can be implemented by specific hardware platforms.
+
+~nb~: A crate that provides a non-blocking API, usually used in the context of embedded systems where blocking operations might not be ideal.
+
+~panic-rtt-target~ and ~rtt-target~: Both relate to "Real Time Transfer", a logging mechanism for embedded systems. The panic-rtt-target would change the panic behavior to log the error using RTT.
+
+~stm32f1~: Provides low-level access to the registers of the STM32F1 family of microcontrollers.
+
+~stm32f1xx-hal~: The Hardware Abstraction Layer (HAL) for STM32F1xx microcontrollers. It implements the embedded-hal traits for the STM32F1xx family, making it easier to write portable embedded Rust code.
+
+
+** Building and running the project
+
+We don't take advantage of Nix's cross-compilation here, but rather use ~cargo~ and ~probe-rs~ to build and flash the chip.
+
+*** probe-rs
+
+When building we also specify that the default feature is ~f103~ but you can override it from the command as well.
+
+#+begin_src toml
+# Cargo.toml
+[features]
+f103 = [ "stm32f1xx-hal/rt", "stm32f1xx-hal/medium",  "stm32f1xx-hal/stm32f103" ]
+default = ["f103"]
+#+end_src
+
+#+begin_src sh
+cargo build --features f103
+#+end_src
+
+
+**** Cargo-embed
+
+The full default ~Embed.toml~ is included in this repo but the main attributes we are concerned with are here:
+
+#+begin_src toml
+# .embed.toml
+[default.probe]
+# USB vendor ID
+usb_vid = "0483"  # specific to the ST-Link on-chip debugger on the nucleo-64
+# USB product ID
+usb_pid = "374b"  # specific to the ST-Link on-chip debugger on the nucleo-64
+
+[default.flashing]
+# Whether or not the target should be flashed.
+enabled = true
+
+[default.general]
+# The chip name of the chip to be debugged.
+chip = "STM32F103RB"
+#+end_src
+
+
+**** Cargo-flash
+
+#+begin_src sh
+cargo flash --chip STM32F103RB --elf target/thumbv7m-none-eabi/debug/rust-stm32
+#+end_src
+
+
+** RTT Debugging
+
+~.embed.toml~ defines a profile for RTT debugging using ~rttui~ to log your errors, panics, etc. Currently 1 channel is defined but it is easy to add more.
+
+To build, flash, and start ~rttui~:
+
+#+begin_src sh
+cargo embed with_rtt
+#+end_src
+
+**** Cargo-embed
+
+From [[https://probe.rs/docs/tools/cargo-embed/][probe-rs]]:
+#+begin_quote
+RTT stands for real time transfers and is a mechanism to transfer data between the debug host and the debuggee.
+
+In its essence it provides a configurable amount of ringbuffers, which are read/written by the target and the debug host. The protocol initially was published by Segger but there is really no magic to it other than ringbuffers being used. This mechanism allows us to transfer data from the target to the host and vice versa really fast.
+
+RTT features:
+
+- Fast duplex data transfers
+- A configurable amount of channels(buffers)
+- Channels can be blocking and non blocking - your choice
+#+end_quote
+
+
+** Register Debugging
+
+~openOCD~ and ~gdb~ will both block your terminal so run each in their own session, it's fine to just let ~openOCD~ run all the time.
+
+**** openOCD
+
+This specific dev board incorporates an ST-Link/V2-1 on-chip debugger, we'll use revC. If you run into issues, try reverting back to revA/revB, but it is now depreciated.
+
+#+begin_src conf
+set CPUTAPID 0x1ba01477
+
+# Choose *one* of the following, according to your ST-Link hardware revision.
+# Revision A and B (older revisions)
+# source [find interface/stlink-v2.cfg]
+# Revision C (newer revision)
+source [find interface/stlink.cfg]
+
+# Set this as appropriate for your MCU model
+source [find target/stm32f1x.cfg]
+#+end_src
+
+/Note: You may have to set your ~CPUTAPID~, if there is a mismatch, your mcu's ID will be returned when you first run ~openOCD~/
+
+#+begin_src sh
+openocd -f ocd_stlv2_stm32f1.cfg
+#+end_src
+
+
+**** gdb
+
+Here we are executing multiple ~gdb~ commands sequentially:
+
+#+begin_src sh
+gdb -ex "target extended-remote localhost:3333" \
+    -ex "file target/thumbv7m-none-eabi/debug/rust-stm32" \
+    -ex load \
+    -ex "info registers" \
+#+end_src
+
+To debug with semihosting and step through breakpoints:
+
+#+begin_src sh
+gdb -ex "target extended-remote localhost:3333" \
+    -ex "file target/thumbv7m-none-eabi/debug/rust-stm32" \
+    -ex load \
+    -ex continue \
+    -ex "monitor arm semihosting enable" \
+    -ex continue
+#+end_src
+
+/Note: You'll have to add the semihosting dependencies to ~Cargo.toml~ and edit your code accordingly./
+
+Semihosting is slow, so it's not terribly helpful for RTT applications.
+
+
+* Nucleo-64 Dev Board
+
+The ~nucleo64~ pinout may be helpful.
+
+#+ATTR_HTML: :width 600px
+[[nucleo64.png]]

@@ -77,9 +77,10 @@
       gdb -ex "target extended-remote localhost:3333" \
           -ex "file target/thumbv7m-none-eabi/debug/rust-stm32" \
           -ex load \
-          -ex continue \
-          -ex "monitor arm semihosting enable" \
-          -ex continue
+          -ex "info registers" \
+          # -ex continue \
+          # -ex "monitor arm semihosting enable" \
+          # -ex continue
     '';
   in {
     packages.${system} = {
