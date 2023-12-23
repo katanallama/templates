@@ -1,0 +1,46 @@
+#+TITLE: Nix Python Template
+
+** Introduction
+This Nix Python template is designed to provide a quick and easy setup for Python projects using Nix Flakes. It includes a customizable development environment, package definition, and formatting tools.
+
+** Template Structure
+ - =flake.nix=: The main flake file that defines the project's dependencies, development shell, and package configurations.
+ - =package.nix=: A Nix expression for building the Python package.
+ - =README.org=: This documentation file.
+
+#+BEGIN_SRC sh
+~/p/templates/python « nix flake show
+.
+├───devShells
+│   └───x86_64-linux
+│       └───default: development environment 'python'
+├───formatter
+│   └───x86_64-linux: package 'alejandra-3.0.0'
+└───packages
+    └───x86_64-linux
+        └───package: package '-'
+#+END_SRC
+
+** Usage
+*** Development Shell
+To enter the development environment, run:
+#+BEGIN_SRC sh
+nix develop
+#+END_SRC
+
+*** Building the Package
+To build the Python package, run:
+#+BEGIN_SRC sh
+nix build .#package
+#+END_SRC
+
+** Customization
+*** Python Version
+The template is set up with Python 3.11 by default. To change the Python version, modify the =customizePkgs= function in =flake.nix=.
+
+*** Adding Dependencies
+Add any additional Python packages to the =buildInputs= in =package.nix=.
+
+** TODOs
+- [ ] CUDA support through a module
+- [ ] treefmt support through a module
