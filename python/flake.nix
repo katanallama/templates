@@ -10,38 +10,33 @@
     ...
   }:
     flake-parts.lib.mkFlake {inherit self inputs;} ({withSystem, ...}: {
-      systems = [
-        "x86_64-linux"
-      ];
+      systems = ["x86_64-linux"];
 
       perSystem = {
-        lib,
-        config,
-        self',
-        inputs',
         pkgs,
         system,
         ...
       }: let
-        customizePkgs = pkgs:
-          pkgs
-          // {
-            python3 = pkgs.python311;
-            python3Packages = pkgs.python311Packages;
-          };
+        py3 = pkgs.python311;
+        py3Packages = pkgs.python311Packages;
 
-        pythonPkgs = customizePkgs pkgs;
+        pyEnv = py3.withPackages (ps:
+          with py3Packages; [
+            # Add python packages as needed
+            # numpy
+            # pandas
+          ]);
       in {
-        devShells.default = pythonPkgs.mkShell {
-          name = "python";
-          buildInputs = with pythonPkgs; [
-            ruff
+        devShells.default = pkgs.mkShell {
+          name = "Python dev env";
+          buildInputs = with pkgs; [
             ruff-lsp
+            pyEnv
           ];
         };
 
         packages = {
-          default = pythonPkgs.callPackage ./package.nix {};
+          default = py3Packages.callPackage ./package.nix {};
         };
       };
     });

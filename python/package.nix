@@ -1,10 +1,10 @@
 {
-  stdenv,
-  lib,
+  buildPythonPackage,
   fetchFromGitHub,
+  lib,
 }:
-stdenv.mkDerivation rec {
-  name = "-${version}";
+buildPythonPackage rec {
+  pname = "-${version}";
   version = "";
 
   src = fetchFromGitHub {
@@ -16,12 +16,11 @@ stdenv.mkDerivation rec {
 
   buildInputs = [];
 
-  meta = {
-    description = "";
-    homepage = "https://github.com//";
-
-    # license = lib.licenses.;
-    # maintainers = [ lib.maintainers. ];
-    # platforms = lib.platforms.;
+  meta = with lib; {
+    changelog = "https://github.com/${owner}/${pname}/releases/tag/${version}";
+    description = " ";
+    homepage = "https://github.com/${owner}/${pname}";
+    license = licenses.mit;
+    maintainers = with maintainers; [];
   };
 }
